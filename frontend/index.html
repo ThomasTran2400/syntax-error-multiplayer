@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYNTAX_ERROR // NETWORK_LOGIC</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        body {
+            background-color: #0d0e12;
+            color: #e2e8f0;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        #start-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(13, 14, 18, 0.98);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        h1 {
+            color: #ff3366;
+            font-size: 3rem;
+            text-shadow: 0 0 10px rgba(255, 51, 102, 0.5);
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+
+        .menu-subtitle {
+            font-size: 0.9rem;
+            color: #8a99ad;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+        }
+
+        .difficulty-panel {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .diff-btn, #start-button, #restart-button, .config-btn, .choice-btn, #next-btn {
+            background: #1a1c23;
+            border: 1px solid #3f4456;
+            color: #8a99ad;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+
+        .diff-btn.selected {
+            border-color: #ffff00;
+            color: #ffff00;
+            box-shadow: 0 0 8px rgba(255, 255, 0, 0.3);
+        }
+
+        #start-button, #restart-button {
+            border-color: #00ffcc;
+            color: #00ffcc;
+            font-size: 1.2rem;
+            padding: 15px 40px;
+        }
+
+        #start-button:hover, #restart-button:hover {
+            background: #00ffcc;
+            color: #0d0e12;
+            box-shadow: 0 0 15px #00ffcc;
+        }
+
+        #workspace-rack {
+            display: flex;
+            width: 100%;
+            max-width: 1400px;
+            gap: 20px;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .server-chassis {
+            width: 300px;
+            background: #111319;
+            border: 2px solid #242936;
+            padding: 15px;
+            display: none; 
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .server-label {
+            font-size: 0.75rem;
+            color: #566375;
+            font-weight: bold;
+            border-bottom: 1px solid #242936;
+            padding-bottom: 5px;
+        }
+
+        .hardware-bays-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .hardware-slot-row {
+            background: #161920;
+            border: 1px dashed #33394a;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-height: 75px;
+            justify-content: center;
+        }
+
+        .slot-tag {
+            font-size: 0.65rem;
+            color: #4a5568;
+        }
+
+        .pixel-hardware-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            background: #1c202b;
+            padding: 5px;
+            border: 1px solid #3a435c;
+        }
+
+        .pixel-hardware-container:hover {
+            border-color: #ffaa00;
+            background: #232938;
+        }
+
+        .pixel-hardware-container.disabled-bay {
+            cursor: not-allowed !important;
+            opacity: 0.35;
+            border-color: #4a1d24 !important;
+        }
+
+        .hardware-meta {
+            font-size: 0.7rem;
+            line-height: 1.2;
+        }
+
+        .desc-text {
+            font-size: 0.6rem;
+            color: #718096;
+        }
+
+        .pixel-art-usb {
+            display: grid;
+            grid-template-columns: repeat(12, 3px);
+            grid-template-rows: repeat(7, 3px);
+            gap: 0;
+        }
+        .px { width: 3px; height: 3px; }
+        .px-trans { background: transparent; }
+        .px-border { background: #4a5568; }
+        .px-metal { background: #cbd5e1; }
+        .px-core-hp { background: #00ff88; }
+        .px-core-risk { background: #38bdf8; }
+        .px-core-virus { background: #ef4444; }
+        .px-core-skip { background: #a855f7; }
+        .px-core-time { background: #f59e0b; }
+        .px-core-take { background: #ec4899; }
+        .px-core-regen { background: #eab308; }
+        .px-core-addturn { background: #8b5cf6; }
+        .px-core-reverse { background: #f43f5e; }
+
+        .injecting-hardware {
+            animation: injectPulse 0.6s ease-out infinite;
+        }
+        @keyframes injectPulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(0.95); opacity: 0.5; border-color: #ff0055; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        #game-container {
+            flex: 1;
+            background: #111319;
+            border: 2px solid #242936;
+            padding: 20px;
+            display: none;
+            max-width: 700px;
+            box-sizing: border-box;
+        }
+
+        .status-board {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0d0e12;
+            padding: 15px;
+            border: 1px solid #242936;
+            margin-bottom: 15px;
+        }
+
+        .bot-header {
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        .player-side .bot-header, .player-bot { color: #00ffcc; }
+        .cpu-side .bot-header, .cpu-bot { color: #ff3366; }
+
+        .kernel-tag {
+            font-size: 0.6rem;
+            color: #4a5568;
+        }
+
+        .hp-container {
+            font-size: 0.8rem;
+            margin-top: 4px;
+        }
+        .hp {
+            color: #00ff88;
+            letter-spacing: 2px;
+            font-weight: bold;
+        }
+
+        .win-counter {
+            font-size: 0.65rem;
+            color: #a0aec0;
+        }
+
+        #turn-countdown {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        .timer-icon {
+            width: 14px;
+            height: 14px;
+            image-rendering: pixelated;
+        }
+        #countdown-text {
+            font-size: 0.75rem;
+            color: #ffaa00;
+            font-weight: bold;
+        }
+
+        .config-panel {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+        }
+        .config-btn {
+            font-size: 0.6rem;
+            padding: 4px 8px;
+        }
+        .config-btn.active {
+            background: #2b6cb0;
+            color: #fff;
+            border-color: #63b3ed;
+        }
+        .config-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            background: #111319 !important;
+            border-color: #242936 !important;
+            color: #4a5568 !important;
+        }
+
+        #narrator-box {
+            background: #0d0e12;
+            border: 1px solid #ffff00;
+            color: #ffff00;
+            padding: 15px;
+            font-size: 0.75rem;
+            min-height: 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            box-sizing: border-box;
+        }
+
+        #narrator-text {
+            flex: 1;
+            word-break: break-word;
+            line-height: 1.4;
+        }
+
+        #next-btn {
+            font-size: 0.65rem;
+            padding: 4px 10px;
+            border-color: inherit;
+            color: inherit;
+            display: none;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        #projector {
+            background: #000;
+            border: 1px solid #1a1c23;
+            color: #00ffcc;
+            padding: 25px;
+            text-align: center;
+            font-family: monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            letter-spacing: 1px;
+            box-shadow: inset 0 0 15px rgba(0, 255, 204, 0.15);
+            box-sizing: border-box;
+            word-break: break-word;
+        }
+
+        .btn-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .choice-btn {
+            background: #1a1c23;
+            border: 1px solid #00ffcc;
+            color: #00ffcc;
+            padding: 12px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+        .choice-btn:hover {
+            background: rgba(0, 255, 204, 0.1);
+            box-shadow: 0 0 8px rgba(0, 255, 204, 0.2);
+        }
+
+        .ui-spacer { height: 15px; }
+    </style>
+</head>
+<body>
+
+<div id="start-screen">
+    <h1>SYNTAX_ERROR<br><span style="font-size: 1.2rem; color: #00ffcc;">[MULTIPLAYER_LOGIC.SYS]</span></h1>
+    <div class="menu-subtitle">SELECT ONLINE MATCHMAKING DESIGNATION:</div>
+    <div class="difficulty-panel">
+        <button class="diff-btn selected" id="btn-diff-easy">[GLOBAL_LOBBY]</button>
+    </div>
+    <button id="start-button" onclick="startGame()">CONNECT TO PEER</button>
+    <button id="restart-button" style="display: none;" onclick="triggerPageRefresh()">SYSTEM REBOOT</button>
+</div>
+ 
+<div id="workspace-rack">
+ 
+    <div class="server-chassis player-side" id="server-left">
+        <span class="server-label">[SYS_LOCAL: YOUR DRIVES]</span>
+        <div class="hardware-bays-wrapper" id="player-bays"></div>
+    </div>
+ 
+    <div id="game-container">
+        <div class="status-board">
+            <div>
+                <span class="bot-header">[LOCAL_PLAYER]</span><br>
+                <span class="kernel-tag">CONNECTED CLIENT</span><br>
+                <div class="hp-container">MEMORIES: <span id="player-hp" class="hp"></span></div>
+                <div id="player-wins" class="win-counter">SCORE: 0 WINS</div>
+            </div>
+            <div style="text-align: center; font-size: 0.55rem;">
+                SYSTEM LINK<br>
+                <span id="current-turn" style="color: #ffff00; font-weight: bold;">-</span>
+                <div id="turn-countdown">
+                    <img class="timer-icon" src="https://static.vecteezy.com/system/resources/thumbnails/068/444/177/small/pixel-art-of-a-modern-clock-with-arrows-marking-the-time-free-png.png" alt="Timer Module">
+                    <span id="countdown-text">20s</span>
+                </div>
+            </div>
+            <div>
+                <span class="bot-header">[REMOTE_PEER]</span><br>
+                <span class="kernel-tag">REMOTE CLIENT</span><br>
+                <div class="hp-container">MEMORIES: <span id="cpu-hp" class="hp"></span></div>
+                <div id="cpu-wins" class="win-counter">SCORE: 0 WINS</div>
+            </div>
+        </div>
+ 
+        <div class="config-panel">
+            <button id="cfg-skip" class="config-btn" onclick="toggleConfig('skip')">[AUTO SKIP]</button>
+            <button id="cfg-next" class="config-btn" onclick="toggleConfig('next')">[AUTO NEXT]</button>
+            <button id="cfg-instant" class="config-btn" onclick="toggleConfig('instant')">[INSTANT TEXT]</button>
+        </div>
+ 
+        <div class="ui-spacer"></div>
+ 
+        <div id="narrator-box">
+            <span id="narrator-text"></span>
+            <button id="next-btn" onclick="advanceDialogue()">NEXT</button>
+        </div>
+ 
+        <div class="ui-spacer"></div>
+ 
+        <div id="projector">-- CONNECTING PIPELINE --</div>
+ 
+        <div id="matrix-btn-dock" class="btn-container"></div>
+    </div>
+ 
+    <div class="server-chassis cpu-side" id="server-right">
+        <span class="server-label">[SYS_REMOTE: PEER DRIVES]</span>
+        <div class="hardware-bays-wrapper" id="cpu-bays"></div>
+    </div>
+ 
+</div>
+ 
+<script>
+    // CRITICAL PASTE: Put your generated Railway URL inside this socket initializer
+    const socket = io("https://your-generated-domain.up.railway.app"); 
+    const activeMatchRoomId = "global-matrix-room-1";
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSound(freq, type, duration, slideTo) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, audioCtx.currentTime + duration);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    }
+ 
+    function playPlayerDamageSound() { playSound(220, 'sawtooth', 0.5, 30); }
+    function playCpuDamageSound() { playSound(300, 'sine', 0.25, 1200); }
+    function playUtilitySound() { playSound(600, 'triangle', 0.15, 900); }
+    function playExplosionSound() { playSound(100, 'sawtooth', 1.2, 10); }
+ 
+    let playerHP = 8;
+    let cpuHP = 8;
+    let playerWinPoints = 0;
+    let cpuWinPoints = 0;
+ 
+    let isPlayerTurn = false;
+    let currentMatrixOptions = [];
+ 
+    let dialogueQueue = [];
+    let dialogueCallback = null;
+    let typingTimer = null;
+    let autoNextTimer = null;
+    let projectorScrambleInterval = null;
+ 
+    let isUiLocked = true;
+    let isDialogueActive = false;
+    let configState = { skip: false, next: false, instant: false };
+ 
+    const usbTypes = [
+        { id: 'hp', name: 'PATCH_CORE.USB', coreClass: 'px-core-hp', desc: 'Heals 1 Memory cell instantly. Max 10.' },
+        { id: 'risk', name: 'SANDBOX_PROXY.USB', coreClass: 'px-core-risk', desc: 'Negate the next fail answer penalty.' },
+        { id: 'virus', name: 'CO_PAYLOAD.USB', coreClass: 'px-core-virus', desc: 'Increase the next damage output.' },
+        { id: 'skip', name: 'OVERCLOCK_SKIP.USB', coreClass: 'px-core-skip', desc: 'Instantly skips your current action turn.' },
+        { id: 'time', name: 'CHRONO_LOCK.USB', coreClass: 'px-core-time', desc: 'Set timer on your opponent for 20s.' },
+        { id: 'take', name: 'TAKE_SYSTEM.USB', coreClass: 'px-core-take', desc: 'Intercept and steal 1 USB module from opponent.' },
+        { id: 'regen', name: 'REGEN_SHIELD.USB', coreClass: 'px-core-regen', desc: 'Heals 2 HP after opponent turn. Cancelled if hit!' },
+        { id: 'addturn', name: 'TIME_WARP_LOOP.USB', coreClass: 'px-core-addturn', desc: 'Forces the sequence matrix to retain your authority.' },
+        { id: 'reverse', name: 'MIRROR_SHIELD.USB', coreClass: 'px-core-reverse', desc: 'Inverts all immediate damage directly back.' }
+    ];
+ 
+    let playerInventory = [null, null, null, null];
+    let cpuInventory = [null, null, null, null];
+ 
+    const glitchChars = "§Æµ¶‡¤ßØ±æœ•§1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const usbPixelMap = [
+        [0,0,0,1,1,1,1,1,1,1,0,0],
+        [1,1,1,1,3,3,3,3,3,1,1,0],
+        [1,2,2,1,3,3,3,3,3,1,1,1],
+        [1,2,0,1,3,3,3,3,3,1,1,1],
+        [1,2,2,1,3,3,3,3,3,1,1,1],
+        [1,1,1,1,3,3,3,3,3,1,1,0],
+        [0,0,0,1,1,1,1,1,1,1,0,0]
+    ];
+ 
+    function generatePixelArtUSBHtml(coreClass) {
+        let html = '<div class="pixel-art-usb">';
+        for (let r = 0; r < 7; r++) {
+            for (let c = 0; c < 12; c++) {
+                let val = usbPixelMap[r][c];
+                let cssType = 'px-trans';
+                if (val === 1) cssType = 'px-border';
+                if (val === 2) cssType = 'px-metal';
+                if (val === 3) cssType = coreClass;
+                html += `<div class="px ${cssType}"></div>`;
+            }
+        }
+        html += '</div>';
+        return html;
+    }
+ 
+    function toggleConfig(type) {
+        if (type === 'skip' && isDialogueActive) return;
+        clearTimeout(typingTimer);
+        clearTimeout(autoNextTimer);
+ 
+        if (type === 'skip') { configState.skip = !configState.skip; configState.next = false; configState.instant = false; }
+        else if (type === 'next') { configState.next = !configState.next; configState.skip = false; if (configState.next) configState.instant = false; }
+        else if (type === 'instant') { configState.instant = !configState.instant; configState.skip = false; if (configState.instant) configState.next = false; }
+ 
+        document.getElementById('cfg-skip').classList.toggle('active', configState.skip);
+        document.getElementById('cfg-next').classList.toggle('active', configState.next);
+        document.getElementById('cfg-instant').classList.toggle('active', configState.instant);
+    }
+ 
+    function startProjectorScramble(baseText) {
+        clearInterval(projectorScrambleInterval);
+        projectorScrambleInterval = setInterval(() => {
+            let arr = baseText.split("");
+            for(let i=0; i<arr.length; i++) {
+                if(arr[i]!==' ' && arr[i]!=='\n' && Math.random()>0.4) {
+                    arr[i] = glitchChars.charAt(Math.floor(Math.random()*glitchChars.length));
+                }
+            }
+            document.getElementById('projector').innerText = arr.join("");
+        }, 60);
+    }
+ 
+    function stopProjectorAnimation() { clearInterval(projectorScrambleInterval); }
+ 
+    function startGame() {
+        document.getElementById('start-screen').style.display = 'none';
+        document.getElementById('game-container').style.display = 'block';
+        document.getElementById('server-left').style.display = 'flex';
+        document.getElementById('server-right').style.display = 'flex';
+        document.getElementById('projector').innerText = "WAITING FOR REMOTE PEER CONNECTION...";
+
+        // Tell backend server to drop us into the room channel
+        socket.emit('join-room', activeMatchRoomId);
+    }
+
+    // Network Sync Triggers
+    socket.on('waiting-for-opponent', (data) => {
+        queueDialogue(["Narrator: Secure port targeted. Standing by for multi-terminal sync alignment..."]);
+    });
+
+    socket.on('game-start', (roomState) => {
+        isUiLocked = false;
+        syncDataStateFromServer(roomState);
+        queueDialogue(["Narrator: Synchronous link connection established! Matrix arrays matched."]);
+    });
+
+    socket.on('state-updated', (updatedRoomState) => {
+        syncDataStateFromServer(updatedRoomState);
+    });
+
+    function syncDataStateFromServer(state) {
+        // Evaluate authority dynamically using unique socket identifier IDs
+        isPlayerTurn = (state.turn === socket.id);
+        
+        let keys = Object.keys(state.hp);
+        let counterpartId = keys.find(id => id !== socket.id);
+
+        playerHP = state.hp[socket.id] || 8;
+        cpuHP = counterpartId ? (state.hp[counterpartId] || 8) : 8;
+        currentMatrixOptions = state.matrix;
+
+        updateHPDisplay();
+        loadMatrixRound();
+    }
+ 
+    function renderHardwareBays() {
+        const leftBay = document.getElementById('player-bays');
+        leftBay.innerHTML = "";
+        for (let i = 0; i < 4; i++) {
+            let row = document.createElement('div');
+            row.className = "hardware-slot-row";
+            leftBay.appendChild(row);
+        }
+    }
+
+    function updateHPDisplay() {
+        document.getElementById('player-hp').innerHTML = "I".repeat(Math.max(0, playerHP)) || "CRASHED";
+        document.getElementById('cpu-hp').innerHTML = "I".repeat(Math.max(0, cpuHP)) || "CRASHED";
+    }
+ 
+    function typeText(text, index = 0) {
+        isUiLocked = true;
+        const txtSpan = document.getElementById('narrator-text');
+        const nextBtn = document.getElementById('next-btn');
+ 
+        if (index === 0) {
+            txtSpan.innerText = "";
+            nextBtn.style.display = 'none';
+        }
+ 
+        if (configState.instant) {
+            txtSpan.innerText = text;
+            nextBtn.style.display = 'inline-block';
+            isUiLocked = false;
+            return;
+        }
+ 
+        if (index < text.length) {
+            txtSpan.innerText += text.charAt(index);
+            typingTimer = setTimeout(() => typeText(text, index + 1), 20);
+        } else {
+            nextBtn.style.display = 'inline-block';
+            isUiLocked = false; 
+        }
+    }
+ 
+    function queueDialogue(lines, callback) {
+        dialogueQueue = [...lines];
+        dialogueCallback = callback;
+        advanceDialogue();
+    }
+ 
+    function advanceDialogue() {
+        if (dialogueQueue.length > 0) {
+            let nextLine = dialogueQueue.shift();
+            typeText(nextLine);
+        } else {
+            document.getElementById('next-btn').style.display = 'none';
+            if (dialogueCallback) dialogueCallback();
+        }
+    }
+ 
+    function loadMatrixRound() {
+        if (playerHP <= 0 || cpuHP <= 0) return processEndgameLoop();
+ 
+        if (isPlayerTurn) {
+            document.getElementById('current-turn').innerText = "YOUR ACTION AUTHORITY";
+            document.getElementById('current-turn').style.color = "#00ffcc";
+            startProjectorScramble("RUNNING_SYSTEM_DECRYPT_STREAM...\nTERMINAL SECURE.");
+            renderMatrixButtons();
+        } else {
+            document.getElementById('current-turn').innerText = "PEER ACTION AUTHORITY";
+            document.getElementById('current-turn').style.color = "#ff3366";
+            document.getElementById('projector').innerText = "--- PEER PROCESSING GRID INTERFACE ---";
+            document.getElementById('matrix-btn-dock').innerHTML = "";
+        }
+    }
+ 
+    function renderMatrixButtons() {
+        const dock = document.getElementById('matrix-btn-dock');
+        dock.innerHTML = "";
+ 
+        currentMatrixOptions.forEach((opt, index) => {
+            if (!opt.cleared) {
+                const btn = document.createElement('button');
+                btn.className = 'choice-btn';
+                btn.innerText = `[NODE_${index+1}]`;
+                btn.onclick = () => selectMatrixCell(index);
+                dock.appendChild(btn);
+            }
+        });
+    }
+ 
+    function selectMatrixCell(idx) {
+        if (isUiLocked || !isPlayerTurn) return;
+        isUiLocked = true; 
+        stopProjectorAnimation();
+ 
+        // Emit selected network parameters straight to backend central supervisor
+        socket.emit('select-node', { roomId: activeMatchRoomId, nodeIndex: idx });
+    }
+ 
+    function processEndgameLoop() {
+        stopProjectorAnimation();
+        playExplosionSound();
+ 
+        if (playerHP <= 0) {
+            document.getElementById('projector').innerText = "FATAL_CRASH\n[CONNECTION LOST]";
+        } else {
+            document.getElementById('projector').innerText = "CLEARED\n[YOU WON LINK MATCH]";
+        }
+        document.getElementById('start-screen').style.display = 'flex';
+        document.getElementById('start-button').style.display = 'none';
+        document.getElementById('restart-button').style.display = 'inline-block';
+    }
+ 
+    function triggerPageRefresh() { window.location.reload(); }
+</script>
+</body>
+</html>
