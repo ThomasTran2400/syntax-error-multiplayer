@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SYNTAX_ERROR // NETWORK_LOGIC</title>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <title>XYNTAX_ERROR // DECISION_LOGIC</title>
+    <!-- Socket.io client for Railway backend connection -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         body {
             background-color: #0d0e12;
@@ -52,7 +53,7 @@
             margin-bottom: 30px;
         }
 
-        .diff-btn, #start-button, #restart-button, .config-btn, .choice-btn, #next-btn {
+        .diff-btn, #start-button, #global-match-btn, #restart-button, .config-btn, .choice-btn, #next-btn {
             background: #1a1c23;
             border: 1px solid #3f4456;
             color: #8a99ad;
@@ -80,6 +81,30 @@
             background: #00ffcc;
             color: #0d0e12;
             box-shadow: 0 0 15px #00ffcc;
+        }
+
+        /* Global Match Button Styles */
+        #global-match-btn {
+            margin-top: 15px;
+            border-color: #ff3366;
+            color: #ff3366;
+            font-size: 1.2rem;
+            padding: 15px 40px;
+        }
+
+        #global-match-btn:hover {
+            background: #ff3366;
+            color: #0d0e12;
+            box-shadow: 0 0 15px #ff3366;
+        }
+
+        #global-match-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #1a1c23;
+            color: #8a99ad;
+            border-color: #3f4456;
+            box-shadow: none;
         }
 
         #workspace-rack {
@@ -151,6 +176,9 @@
             opacity: 0.35;
             border-color: #4a1d24 !important;
         }
+        .pixel-hardware-container.disabled-bay:hover {
+            background: #1c202b !important;
+        }
 
         .hardware-meta {
             font-size: 0.7rem;
@@ -221,6 +249,7 @@
         .kernel-tag {
             font-size: 0.6rem;
             color: #4a5568;
+            cursor: pointer;
         }
 
         .hp-container {
@@ -355,27 +384,31 @@
 <body>
 
 <div id="start-screen">
-    <h1>SYNTAX_ERROR<br><span style="font-size: 1.2rem; color: #00ffcc;">[MULTIPLAYER_LOGIC.SYS]</span></h1>
-    <div class="menu-subtitle">SELECT ONLINE MATCHMAKING DESIGNATION:</div>
+    <h1>XYNTAX_ERROR<br><span style="font-size: 1.2rem; color: #00ffcc;">[DECISION_LOGIC.SYS]</span></h1>
+    <div class="menu-subtitle">CHOOSE SYSTEM INTELLIGENCE PROFILE:</div>
     <div class="difficulty-panel">
-        <button class="diff-btn selected" id="btn-diff-easy">[GLOBAL_LOBBY]</button>
+        <button class="diff-btn selected" id="btn-diff-easy" onclick="setGameDifficulty('easy')">[EASY_MODE]</button>
+        <button class="diff-btn" id="btn-diff-normal" onclick="setGameDifficulty('normal')">[NORMAL_MODE]</button>
+        <button class="diff-btn" id="btn-diff-hard" onclick="setGameDifficulty('hard')">[HARD_CORE_MODE]</button>
     </div>
-    <button id="start-button" onclick="startGame()">CONNECT TO PEER</button>
+    <button id="start-button" onclick="startGame()">START VS CPU</button>
+    <!-- GLOBAL MATCH BUTTON -->
+    <button id="global-match-btn" onclick="findGlobalMatch()">[GLOBAL_MATCH]</button>
     <button id="restart-button" style="display: none;" onclick="triggerPageRefresh()">SYSTEM REBOOT</button>
 </div>
  
 <div id="workspace-rack">
  
     <div class="server-chassis player-side" id="server-left">
-        <span class="server-label">[SYS_LOCAL: YOUR DRIVES]</span>
+        <span class="server-label">[SYS_LEFT: PLAYER DRIVES]</span>
         <div class="hardware-bays-wrapper" id="player-bays"></div>
     </div>
  
     <div id="game-container">
         <div class="status-board">
             <div>
-                <span class="bot-header">[LOCAL_PLAYER]</span><br>
-                <span class="kernel-tag">CONNECTED CLIENT</span><br>
+                <span class="bot-header">[PLAYER_BOT]</span><br>
+                <span class="kernel-tag" onclick="triggerCheatPayloadLoad()">LANGUAGE: JAVASCRIPT</span><br>
                 <div class="hp-container">MEMORIES: <span id="player-hp" class="hp"></span></div>
                 <div id="player-wins" class="win-counter">SCORE: 0 WINS</div>
             </div>
@@ -388,8 +421,8 @@
                 </div>
             </div>
             <div>
-                <span class="bot-header">[REMOTE_PEER]</span><br>
-                <span class="kernel-tag">REMOTE CLIENT</span><br>
+                <span class="bot-header">[CPU_BOT]</span><br>
+                <span class="kernel-tag">LANGUAGE: JAVASCRIPT</span><br>
                 <div class="hp-container">MEMORIES: <span id="cpu-hp" class="hp"></span></div>
                 <div id="cpu-wins" class="win-counter">SCORE: 0 WINS</div>
             </div>
@@ -410,23 +443,19 @@
  
         <div class="ui-spacer"></div>
  
-        <div id="projector">-- CONNECTING PIPELINE --</div>
+        <div id="projector">-- PROJECTOR READY --</div>
  
         <div id="matrix-btn-dock" class="btn-container"></div>
     </div>
  
     <div class="server-chassis cpu-side" id="server-right">
-        <span class="server-label">[SYS_REMOTE: PEER DRIVES]</span>
+        <span class="server-label">[SYS_RIGHT: CPU DRIVES]</span>
         <div class="hardware-bays-wrapper" id="cpu-bays"></div>
     </div>
  
 </div>
  
 <script>
-    // CRITICAL PASTE: Put your generated Railway URL inside this socket initializer
-    const socket = io("https://your-generated-domain.up.railway.app"); 
-    const activeMatchRoomId = "global-matrix-room-1";
-
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playSound(freq, type, duration, slideTo) {
         if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -453,8 +482,10 @@
     let playerWinPoints = 0;
     let cpuWinPoints = 0;
  
-    let isPlayerTurn = false;
+    let isPlayerTurn = true;
     let currentMatrixOptions = [];
+    let countCorrectAnswers = 0;
+    let countWrongAnswers = 0;
  
     let dialogueQueue = [];
     let dialogueCallback = null;
@@ -462,26 +493,55 @@
     let autoNextTimer = null;
     let projectorScrambleInterval = null;
  
-    let isUiLocked = true;
+    let isUiLocked = false;
     let isDialogueActive = false;
     let configState = { skip: false, next: false, instant: false };
+    let gameDifficulty = 'easy';
+
+    // Multiplayer Variables
+    let socket = null;
+    let isMultiplayer = false;
+    let opponentSocketId = null;
  
     const usbTypes = [
         { id: 'hp', name: 'PATCH_CORE.USB', coreClass: 'px-core-hp', desc: 'Heals 1 Memory cell instantly. Max 10.' },
         { id: 'risk', name: 'SANDBOX_PROXY.USB', coreClass: 'px-core-risk', desc: 'Negate the next fail answer penalty.' },
         { id: 'virus', name: 'CO_PAYLOAD.USB', coreClass: 'px-core-virus', desc: 'Increase the next damage output.' },
         { id: 'skip', name: 'OVERCLOCK_SKIP.USB', coreClass: 'px-core-skip', desc: 'Instantly skips your current action turn.' },
-        { id: 'time', name: 'CHRONO_LOCK.USB', coreClass: 'px-core-time', desc: 'Set timer on your opponent for 20s.' },
+        { id: 'time', name: 'CHRONO_LOCK.USB', coreClass: 'px-core-time', desc: 'Set timer on your opponent for 20s, the more you use at the same time the less time your opponent have. Damage your opponent if the timer ran out.' },
         { id: 'take', name: 'TAKE_SYSTEM.USB', coreClass: 'px-core-take', desc: 'Intercept and steal 1 USB module from opponent.' },
         { id: 'regen', name: 'REGEN_SHIELD.USB', coreClass: 'px-core-regen', desc: 'Heals 2 HP after opponent turn. Cancelled if hit!' },
-        { id: 'addturn', name: 'TIME_WARP_LOOP.USB', coreClass: 'px-core-addturn', desc: 'Forces the sequence matrix to retain your authority.' },
-        { id: 'reverse', name: 'MIRROR_SHIELD.USB', coreClass: 'px-core-reverse', desc: 'Inverts all immediate damage directly back.' }
+        { id: 'addturn', name: 'TIME_WARP_LOOP.USB', coreClass: 'px-core-addturn', desc: 'After use this USB, the next turn will be the one who used this USB. Cant do more than 2. Disable other add turn if it use more than 2 times.' },
+        { id: 'reverse', name: 'MIRROR_SHIELD.USB', coreClass: 'px-core-reverse', desc: 'Reverse the damage. Example, if I get damage the opponent will be the one who recieve it, same with if the opponent get dmg I will be... 1 turn and cant stack, disable all other Reverse if the reverse is activate or you already use it.' }
     ];
  
     let playerInventory = [null, null, null, null];
     let cpuInventory = [null, null, null, null];
  
+    let activeRiskFreeShield = false;
+    let activeDamageBonus = 0; 
+ 
+    let pendingChronoLockChargesForPlayer = 0;
+    let pendingChronoLockChargesForCpu = 0;
+    let currentTurnChronoPenalty = 1;
+ 
+    let playerAddTurnCount = 0;
+    let cpuAddTurnCount = 0;
+    let nextTurnForcedOverrideOwner = null; 
+
+    let playerReverseActive = false;
+    let cpuReverseActive = false;
+    let playerReverseSpentThisCycle = false;
+    let cpuReverseSpentThisCycle = false;
+
+    let playerRegenActive = false;
+    let cpuRegenActive = false;
+ 
+    let runningActiveTurnChronoTime = 0; 
+    let turnTimerInterval = null;
+ 
     const glitchChars = "§Æµ¶‡¤ßØ±æœ•§1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+ 
     const usbPixelMap = [
         [0,0,0,1,1,1,1,1,1,1,0,0],
         [1,1,1,1,3,3,3,3,3,1,1,0],
@@ -491,6 +551,57 @@
         [1,1,1,1,3,3,3,3,3,1,1,0],
         [0,0,0,1,1,1,1,1,1,1,0,0]
     ];
+
+    // Global Matchmaking Function linked to Railway
+    function findGlobalMatch() {
+        const BACKEND_URL = 'https://syntax-error-multiplayer-production.up.railway.app'; 
+        
+        const matchBtn = document.getElementById('global-match-btn');
+        matchBtn.innerText = '[CONNECTING...]';
+        matchBtn.disabled = true;
+
+        if (socket) socket.disconnect();
+        
+        // Connect to Railway Backend
+        socket = io(BACKEND_URL, {
+            transports: ['websocket', 'polling']
+        });
+
+        socket.on('connect', () => {
+            matchBtn.innerText = '[SEARCHING...]';
+            socket.emit('find_match');
+        });
+
+        socket.on('connect_error', (err) => {
+            console.error('Connection failed:', err);
+            matchBtn.innerText = '[SERVER_OFFLINE]';
+            matchBtn.disabled = false;
+        });
+
+        socket.on('match_found', (data) => {
+            isMultiplayer = true;
+            opponentSocketId = data.opponentId;
+            startGame(true, data.startsFirst);
+        });
+
+        socket.on('opponent_action', (data) => {
+            // TODO: Handle the opponent's moves here later.
+            console.log("Opponent action received:", data);
+        });
+
+        socket.on('opponent_disconnect', () => {
+            queueDialogue(["Narrator: Opponent connection lost. Global link severed."], () => {
+                showResetScreenLink();
+            });
+        });
+    }
+ 
+    function setGameDifficulty(type) {
+        gameDifficulty = type;
+        document.getElementById('btn-diff-easy').classList.toggle('selected', type === 'easy');
+        document.getElementById('btn-diff-normal').classList.toggle('selected', type === 'normal');
+        document.getElementById('btn-diff-hard').classList.toggle('selected', type === 'hard');
+    }
  
     function generatePixelArtUSBHtml(coreClass) {
         let html = '<div class="pixel-art-usb">';
@@ -507,19 +618,57 @@
         html += '</div>';
         return html;
     }
+
+    function triggerCheatPayloadLoad() {
+        playSound(880, 'square', 0.3);
+        playerInventory = [
+            { ...usbTypes[7] },
+            { ...usbTypes[7] },
+            { ...usbTypes[8] },
+            { ...usbTypes[8] }
+        ];
+        renderHardwareBays();
+    }
  
     function toggleConfig(type) {
         if (type === 'skip' && isDialogueActive) return;
+
         clearTimeout(typingTimer);
         clearTimeout(autoNextTimer);
  
-        if (type === 'skip') { configState.skip = !configState.skip; configState.next = false; configState.instant = false; }
-        else if (type === 'next') { configState.next = !configState.next; configState.skip = false; if (configState.next) configState.instant = false; }
-        else if (type === 'instant') { configState.instant = !configState.instant; configState.skip = false; if (configState.instant) configState.next = false; }
+        if (type === 'skip') {
+            configState.skip = !configState.skip;
+            configState.next = false;
+            configState.instant = false;
+        } else if (type === 'next') {
+            configState.next = !configState.next;
+            configState.skip = false;
+            if (configState.next) configState.instant = false;
+        } else if (type === 'instant') {
+            configState.instant = !configState.instant;
+            configState.skip = false;
+            if (configState.instant) configState.next = false;
+        }
  
         document.getElementById('cfg-skip').classList.toggle('active', configState.skip);
         document.getElementById('cfg-next').classList.toggle('active', configState.next);
         document.getElementById('cfg-instant').classList.toggle('active', configState.instant);
+ 
+        if (dialogueQueue.length > 0 || document.getElementById('next-btn').style.display === 'inline-block') {
+            if (configState.skip) {
+                document.getElementById('next-btn').style.display = 'none';
+                dialogueQueue = [];
+                isUiLocked = false;
+                isDialogueActive = false;
+                document.getElementById('cfg-skip').disabled = false;
+                if (dialogueCallback) dialogueCallback();
+            } else if (configState.instant) {
+                document.getElementById('next-btn').style.display = 'inline-block';
+                isUiLocked = false;
+            } else if (configState.next && document.getElementById('next-btn').style.display === 'inline-block') {
+                autoNextTimer = setTimeout(() => advanceDialogue(), 800);
+            }
+        }
     }
  
     function startProjectorScramble(baseText) {
@@ -535,62 +684,122 @@
         }, 60);
     }
  
-    function stopProjectorAnimation() { clearInterval(projectorScrambleInterval); }
+    function stopProjectorAnimation() {
+        clearInterval(projectorScrambleInterval);
+    }
  
-    function startGame() {
+    function startGame(multiplayer = false, startsFirst = null) {
         document.getElementById('start-screen').style.display = 'none';
         document.getElementById('game-container').style.display = 'block';
         document.getElementById('server-left').style.display = 'flex';
         document.getElementById('server-right').style.display = 'flex';
-        document.getElementById('projector').innerText = "WAITING FOR REMOTE PEER CONNECTION...";
-
-        // Tell backend server to drop us into the room channel
-        socket.emit('join-room', activeMatchRoomId);
-    }
-
-    // Network Sync Triggers
-    socket.on('waiting-for-opponent', (data) => {
-        queueDialogue(["Narrator: Secure port targeted. Standing by for multi-terminal sync alignment..."]);
-    });
-
-    socket.on('game-start', (roomState) => {
-        isUiLocked = false;
-        syncDataStateFromServer(roomState);
-        queueDialogue(["Narrator: Synchronous link connection established! Matrix arrays matched."]);
-    });
-
-    socket.on('state-updated', (updatedRoomState) => {
-        syncDataStateFromServer(updatedRoomState);
-    });
-
-    function syncDataStateFromServer(state) {
-        // Evaluate authority dynamically using unique socket identifier IDs
-        isPlayerTurn = (state.turn === socket.id);
+ 
+        playerInventory = [null, null, null, null];
+        cpuInventory = [null, null, null, null];
         
-        let keys = Object.keys(state.hp);
-        let counterpartId = keys.find(id => id !== socket.id);
-
-        playerHP = state.hp[socket.id] || 8;
-        cpuHP = counterpartId ? (state.hp[counterpartId] || 8) : 8;
-        currentMatrixOptions = state.matrix;
-
+        giveRandomUsb('player'); giveRandomUsb('player');
+        giveRandomUsb('cpu'); giveRandomUsb('cpu');
+        
         updateHPDisplay();
-        loadMatrixRound();
+ 
+        isPlayerTurn = (multiplayer && startsFirst !== null) ? startsFirst : Math.random() > 0.5;
+        let starter = isPlayerTurn ? "PLAYER_BOT" : (multiplayer ? "OPPONENT_BOT" : "CPU_BOT");
+ 
+        queueDialogue([
+            "Narrator: Initialization sequence complete. Safety set to 10 Max HP.",
+            multiplayer ? `Narrator: Global link established. Opponent synced.` : `Narrator: Calibration mode config: [${gameDifficulty.toUpperCase()}_LOGIC_BAK].`,
+            `Narrator: Matrix node generation matching. ${starter} is assigned first loop.`
+        ], () => {
+            loadMatrixRound();
+        });
     }
  
+    function giveRandomUsb(owner) {
+        let inv = (owner === 'player') ? playerInventory : cpuInventory;
+        let firstEmpty = inv.indexOf(null);
+        if (firstEmpty !== -1) {
+            inv[firstEmpty] = { ...usbTypes[Math.floor(Math.random() * usbTypes.length)] };
+        }
+    }
+
     function renderHardwareBays() {
         const leftBay = document.getElementById('player-bays');
         leftBay.innerHTML = "";
         for (let i = 0; i < 4; i++) {
             let row = document.createElement('div');
             row.className = "hardware-slot-row";
+            row.id = `p-slot-row-${i}`;
+ 
+            let tag = document.createElement('span');
+            tag.className = "slot-tag";
+            tag.innerText = `BAY ${i+1}`;
+            row.appendChild(tag);
+ 
+            if (playerInventory[i]) {
+                let item = playerInventory[i];
+                let container = document.createElement('div');
+                container.className = "pixel-hardware-container";
+                
+                let isBayDisabled = false;
+                if (item.id === 'addturn' && playerAddTurnCount >= 2) isBayDisabled = true;
+                if (item.id === 'reverse' && (playerReverseActive || playerReverseSpentThisCycle)) isBayDisabled = true;
+
+                if (isBayDisabled) {
+                    container.classList.add('disabled-bay');
+                    container.onclick = null;
+                } else {
+                    container.onclick = () => triggerHardwareInjection(i);
+                }
+
+                container.innerHTML = `
+                    ${generatePixelArtUSBHtml(item.coreClass)}
+                    <div class="hardware-meta">
+                        <span style="color:#ffaa00; font-weight: bold;">${item.name}</span><br>
+                        <span class="desc-text">${item.desc}</span>
+                    </div>`;
+                row.appendChild(container);
+            } else {
+                row.innerHTML += `<span style="font-size:0.4rem;color:#333344;">[EMPTY SLOT]</span>`;
+            }
             leftBay.appendChild(row);
+        }
+ 
+        const rightBay = document.getElementById('cpu-bays');
+        rightBay.innerHTML = "";
+        for (let i = 0; i < 4; i++) {
+            let row = document.createElement('div');
+            row.className = "hardware-slot-row";
+            row.id = `c-slot-row-${i}`;
+ 
+            let tag = document.createElement('span');
+            tag.className = "slot-tag";
+            tag.innerText = `BAY ${i+1}`;
+            row.appendChild(tag);
+ 
+            if (cpuInventory[i]) {
+                let item = cpuInventory[i];
+                let container = document.createElement('div');
+                container.className = "pixel-hardware-container";
+                container.style.cursor = "not-allowed";
+                container.innerHTML = `
+                    ${generatePixelArtUSBHtml(item.coreClass)}
+                    <div class="hardware-meta">
+                        <span style="color:#ff3366; font-weight: bold;">${item.name}</span><br>
+                        <span class="desc-text">${item.desc}</span>
+                    </div>`;
+                row.appendChild(container);
+            } else {
+                row.innerHTML += `<span style="font-size:0.4rem;color:#333344;">[EMPTY SLOT]</span>`;
+            }
+            rightBay.appendChild(row);
         }
     }
 
     function updateHPDisplay() {
         document.getElementById('player-hp').innerHTML = "I".repeat(Math.max(0, playerHP)) || "CRASHED";
         document.getElementById('cpu-hp').innerHTML = "I".repeat(Math.max(0, cpuHP)) || "CRASHED";
+        document.getElementById('player-wins').innerText = `SCORE: ${playerWinPoints} WINS`;
+        document.getElementById('cpu-wins').innerText = `SCORE: ${cpuWinPoints} WINS`;
     }
  
     function typeText(text, index = 0) {
@@ -601,6 +810,13 @@
         if (index === 0) {
             txtSpan.innerText = "";
             nextBtn.style.display = 'none';
+            document.getElementById('narrator-box').style.borderColor = "#ffff00";
+            document.getElementById('narrator-box').style.color = "#ffff00";
+        }
+
+        if (text.includes("REVERSE LOGIC") || text.includes("TIMER EXPIRED") || text.includes("CHRONO LOCK")) {
+            document.getElementById('narrator-box').style.borderColor = "#ff3366";
+            document.getElementById('narrator-box').style.color = "#ff3366";
         }
  
         if (configState.instant) {
@@ -612,42 +828,210 @@
  
         if (index < text.length) {
             txtSpan.innerText += text.charAt(index);
+            if(index % 4 === 0) playSound(700, 'square', 0.01);
             typingTimer = setTimeout(() => typeText(text, index + 1), 20);
         } else {
             nextBtn.style.display = 'inline-block';
             isUiLocked = false; 
+            if (configState.next) {
+                autoNextTimer = setTimeout(() => advanceDialogue(), 800);
+            }
         }
     }
  
     function queueDialogue(lines, callback) {
         dialogueQueue = [...lines];
         dialogueCallback = callback;
+        document.getElementById('matrix-btn-dock').innerHTML = "";
+ 
+        if (configState.skip) {
+            dialogueQueue = [];
+            document.getElementById('narrator-text').innerText = "... [BYPASSED] ...";
+            document.getElementById('next-btn').style.display = 'none';
+            isUiLocked = false;
+            isDialogueActive = false;
+            document.getElementById('cfg-skip').disabled = false;
+            if (dialogueCallback) dialogueCallback();
+            return;
+        }
+
+        isDialogueActive = true;
+        document.getElementById('cfg-skip').disabled = true;
         advanceDialogue();
     }
  
     function advanceDialogue() {
+        clearTimeout(typingTimer);
+        clearTimeout(autoNextTimer);
         if (dialogueQueue.length > 0) {
             let nextLine = dialogueQueue.shift();
             typeText(nextLine);
         } else {
             document.getElementById('next-btn').style.display = 'none';
+            isDialogueActive = false;
+            document.getElementById('cfg-skip').disabled = false;
             if (dialogueCallback) dialogueCallback();
+        }
+    }
+ 
+    function generateMatrixGrid() {
+        while (true) {
+            const totalAnswers = Math.floor(Math.random() * 6) + 3; 
+            let maxPossibleWrong = Math.floor(totalAnswers / 2);
+            countWrongAnswers = Math.floor(Math.random() * (maxPossibleWrong + 1)) || 1;
+            countCorrectAnswers = totalAnswers - countWrongAnswers;
+ 
+            if (countWrongAnswers > 0 && countCorrectAnswers > 0) {
+                currentMatrixOptions = [];
+                for (let i = 0; i < countCorrectAnswers; i++) {
+                    currentMatrixOptions.push({ text: `DATA_CELL_0${i+1}`, trap: false, cleared: false });
+                }
+                for (let i = 0; i < countWrongAnswers; i++) {
+                    currentMatrixOptions.push({ text: `TRAP_WIRE_X${i+1}`, trap: true, cleared: false });
+                }
+                currentMatrixOptions.sort(() => Math.random() - 0.5);
+                break;
+            }
+        }
+        playerReverseSpentThisCycle = false;
+        cpuReverseSpentThisCycle = false;
+
+        giveRandomUsb('player');
+        giveRandomUsb('cpu');
+        renderHardwareBays();
+    }
+ 
+    function startTurnTimer(charges) {
+        clearInterval(turnTimerInterval);
+        const timerWrapper = document.getElementById('turn-countdown');
+        const textContainer = document.getElementById('countdown-text');
+ 
+        if (charges <= 0) {
+            timerWrapper.style.display = 'none';
+            return;
+        }
+ 
+        if (charges === 1) { runningActiveTurnChronoTime = 20; currentTurnChronoPenalty = 1; }
+        else if (charges === 2) { runningActiveTurnChronoTime = 10; currentTurnChronoPenalty = 1; }
+        else if (charges === 3) { runningActiveTurnChronoTime = 5; currentTurnChronoPenalty = 1; }
+        else if (charges >= 4) { runningActiveTurnChronoTime = 2; currentTurnChronoPenalty = 2; }
+ 
+        timerWrapper.style.display = 'flex';
+        textContainer.innerText = `${runningActiveTurnChronoTime}s`;
+ 
+        turnTimerInterval = setInterval(() => {
+            runningActiveTurnChronoTime--;
+            textContainer.innerText = `${runningActiveTurnChronoTime}s`;
+ 
+            if (runningActiveTurnChronoTime <= 0) {
+                clearInterval(turnTimerInterval);
+                timerWrapper.style.display = 'none';
+                triggerTimeExpirationFailure();
+            }
+        }, 1000);
+    }
+ 
+    function stopTurnTimer() {
+        clearInterval(turnTimerInterval);
+        document.getElementById('turn-countdown').style.display = 'none';
+    }
+ 
+    function triggerTimeExpirationFailure() {
+        isUiLocked = true;
+        stopProjectorAnimation();
+        
+        let targetWhoReceivesDamage = isPlayerTurn ? 'player' : 'cpu';
+        
+        if (isPlayerTurn && playerReverseActive) {
+            targetWhoReceivesDamage = 'cpu';
+            playerReverseActive = false;
+        } else if (!isPlayerTurn && cpuReverseActive) {
+            targetWhoReceivesDamage = 'player';
+            cpuReverseActive = false;
+        }
+
+        if (targetWhoReceivesDamage === 'player') {
+            playerHP -= currentTurnChronoPenalty;
+            updateHPDisplay();
+            playPlayerDamageSound();
+            queueDialogue([
+                "Narrator: CHRONO TIMER EXPIRED!",
+                `Narrator: Reverse logic absent or bypassed. Player terminal suffers ${currentTurnChronoPenalty} hardware damage.`
+            ], () => { checkAndProceedNextTurn(); });
+        } else {
+            cpuHP -= currentTurnChronoPenalty;
+            updateHPDisplay();
+            playCpuDamageSound();
+            queueDialogue([
+                "Narrator: CHRONO TIMER EXPIRED!",
+                `Narrator: Connection parameters collapsed onto opponent registry. CPU drops by ${currentTurnChronoPenalty} HP.`
+            ], () => { checkAndProceedNextTurn(); });
         }
     }
  
     function loadMatrixRound() {
         if (playerHP <= 0 || cpuHP <= 0) return processEndgameLoop();
  
-        if (isPlayerTurn) {
-            document.getElementById('current-turn').innerText = "YOUR ACTION AUTHORITY";
-            document.getElementById('current-turn').style.color = "#00ffcc";
-            startProjectorScramble("RUNNING_SYSTEM_DECRYPT_STREAM...\nTERMINAL SECURE.");
-            renderMatrixButtons();
+        const totalRemaining = currentMatrixOptions.filter(o => !o.cleared).length;
+        const correctRemaining = currentMatrixOptions.filter(o => !o.trap && !o.cleared).length;
+        const wrongRemaining = currentMatrixOptions.filter(o => o.trap && !o.cleared).length;
+ 
+        if (totalRemaining === 0 || correctRemaining === 0 || wrongRemaining === 0) {
+            generateMatrixGrid();
         } else {
-            document.getElementById('current-turn').innerText = "PEER ACTION AUTHORITY";
+            renderHardwareBays();
+        }
+
+        const activeTotal = currentMatrixOptions.filter(o => !o.cleared).length;
+        const activeCorrect = currentMatrixOptions.filter(o => !o.trap && !o.cleared).length;
+        const activeWrong = currentMatrixOptions.filter(o => o.trap && !o.cleared).length;
+ 
+        let currentTurnActiveChronoCharges = 0;
+ 
+        if (isPlayerTurn && pendingChronoLockChargesForPlayer > 0) {
+            currentTurnActiveChronoCharges = pendingChronoLockChargesForPlayer;
+            pendingChronoLockChargesForPlayer = 0; 
+        } 
+        else if (!isPlayerTurn && pendingChronoLockChargesForCpu > 0) {
+            currentTurnActiveChronoCharges = pendingChronoLockChargesForCpu;
+            pendingChronoLockChargesForCpu = 0; 
+        }
+ 
+        if (isPlayerTurn) {
+            document.getElementById('current-turn').innerText = "PLAYER TURN";
+            document.getElementById('current-turn').style.color = "#00ffcc";
+ 
+            let msg = `Narrator: Matrix online. Options count: ${activeTotal}.`;
+            if (playerReverseActive) msg += " [REVERSE INTERFACE READY]";
+
+            queueDialogue([
+                msg,
+                `Narrator: Matrix structure parameters: ${activeCorrect} clear slots, ${activeWrong} hazard traps.`
+            ], () => {
+                startTurnTimer(currentTurnActiveChronoCharges);
+                startProjectorScramble("RUNNING_SYSTEM_DECRYPT_STREAM...\nTERMINAL SECURE.");
+                renderMatrixButtons();
+            });
+        } else {
+            document.getElementById('current-turn').innerText = isMultiplayer ? "OPPONENT TURN" : "CPU TURN";
             document.getElementById('current-turn').style.color = "#ff3366";
-            document.getElementById('projector').innerText = "--- PEER PROCESSING GRID INTERFACE ---";
-            document.getElementById('matrix-btn-dock').innerHTML = "";
+            document.getElementById('projector').innerText = "--- OPPONENT PROCESSING ACTION SEQUENCE ---";
+ 
+            let msg = "Narrator: Opponent analyzing structural registry coordinates...";
+            if (cpuReverseActive) msg += " [CPU REVERSE FLIP FLOP BUFFER ENGAGED]";
+
+            queueDialogue([
+                msg,
+                `Narrator: Parsing pathways.`
+            ], () => {
+                startTurnTimer(currentTurnActiveChronoCharges);
+                if (isMultiplayer) {
+                    // In multiplayer, wait for opponent's socket event instead of CPU automation
+                    isUiLocked = true; 
+                } else {
+                    executeCpuAutomationTurn();
+                }
+            });
         }
     }
  
@@ -666,30 +1050,392 @@
         });
     }
  
+    function triggerHardwareInjection(slotIndex) {
+        if (isUiLocked || !isPlayerTurn || !playerInventory[slotIndex]) return;
+ 
+        let activeItem = playerInventory[slotIndex];
+        if (activeItem.id === 'addturn' && playerAddTurnCount >= 2) return;
+        if (activeItem.id === 'reverse' && (playerReverseActive || playerReverseSpentThisCycle)) return;
+
+        const targetedRow = document.getElementById(`p-slot-row-${slotIndex}`).querySelector('.pixel-hardware-container');
+        targetedRow.classList.add('injecting-hardware');
+        
+        // Emit USB usage to opponent if in multiplayer
+        if (isMultiplayer && socket) {
+            socket.emit('player_action', { type: 'use_usb', slotIndex: slotIndex, itemId: activeItem.id });
+        }
+ 
+        setTimeout(() => {
+            playerInventory[slotIndex] = null;
+            renderHardwareBays();
+            applyUsbExecutionPayload(activeItem.id, 'player');
+        }, 600);
+    }
+ 
+    function applyUsbExecutionPayload(id, owner) {
+        playUtilitySound();
+ 
+        if (id === 'hp') {
+            if (owner === 'player') {
+                playerHP = Math.min(10, playerHP + 1);
+                updateHPDisplay();
+                queueDialogue(["Narrator: PATCH_CORE injected. +1 Memory segment recovered."], () => { loadMatrixRound(); });
+            } else {
+                cpuHP = Math.min(10, cpuHP + 1);
+                updateHPDisplay();
+                queueDialogue(["Narrator: CPU hardware initialized node patch. +1 HP core restored."], () => { loadMatrixRound(); });
+            }
+        } 
+        else if (id === 'virus') {
+            activeDamageBonus += 1;
+            if (owner === 'player') {
+                queueDialogue([`Narrator: CO_PAYLOAD deployed. Next outgoing data feedback structural payload boosted by +${activeDamageBonus}.`], () => { loadMatrixRound(); });
+            } else {
+                queueDialogue([`Narrator: CPU initialized CO_PAYLOAD. Outgoing network payload damage factor escalated.`], () => { loadMatrixRound(); });
+            }
+        } 
+        else if (id === 'risk') {
+            if (owner === 'player') activeRiskFreeShield = true;
+            queueDialogue(["Narrator: SANDBOX_PROXY insulation initialized. The next failed node result will be fully quarantined."], () => { loadMatrixRound(); });
+        } 
+        else if (id === 'skip') {
+            stopTurnTimer();
+            if (owner === 'player') {
+                queueDialogue(["Narrator: OVERCLOCK_SKIP deployed. Terminating active cycle."], () => {
+                    isPlayerTurn = false;
+                    loadMatrixRound();
+                });
+            } else {
+                queueDialogue(["Narrator: CPU bypass triggered. Forcing player cycle initialization."], () => {
+                    isPlayerTurn = true;
+                    loadMatrixRound();
+                });
+            }
+        }
+        else if (id === 'time') {
+            if (owner === 'player') {
+                pendingChronoLockChargesForCpu += 1;
+                let calculatedTimer = 20;
+                if (pendingChronoLockChargesForCpu === 2) calculatedTimer = 10;
+                if (pendingChronoLockChargesForCpu === 3) calculatedTimer = 5;
+                if (pendingChronoLockChargesForCpu >= 4) calculatedTimer = 2;
+                queueDialogue([`Narrator: CHRONO_LOCK matrix deployed. Opponent execution tracking window dropped to ${calculatedTimer} seconds.`], () => { loadMatrixRound(); });
+            } else {
+                pendingChronoLockChargesForPlayer += 1;
+                let calculatedTimer = 20;
+                if (pendingChronoLockChargesForPlayer === 2) calculatedTimer = 10;
+                if (pendingChronoLockChargesForPlayer === 3) calculatedTimer = 5;
+                if (pendingChronoLockChargesForPlayer >= 4) calculatedTimer = 2;
+                queueDialogue([`Narrator: CHRONO_LOCK logic array mounted on your registry thread. Upcoming choice timer squashed to ${calculatedTimer}s!`], () => { loadMatrixRound(); });
+            }
+        }
+        else if (id === 'take') {
+            let userInv = (owner === 'player') ? playerInventory : cpuInventory;
+            let opponentInv = (owner === 'player') ? cpuInventory : playerInventory;
+            let targetSlots = [];
+            opponentInv.forEach((item, index) => { if(item !== null) targetSlots.push(index); });
+             
+            if (targetSlots.length > 0) {
+                let stolenIdx = targetSlots[Math.floor(Math.random() * targetSlots.length)];
+                let stolenItem = opponentInv[stolenIdx];
+                opponentInv[stolenIdx] = null;
+                 
+                let firstEmptySlot = userInv.indexOf(null);
+                if (firstEmptySlot !== -1) {
+                    userInv[firstEmptySlot] = stolenItem;
+                }
+                renderHardwareBays();
+                if (owner === 'player') {
+                    queueDialogue([`Narrator: TAKE_SYSTEM intercept script successful! You hijacked ${stolenItem.name} out of CPU Drive Bay ${stolenIdx+1}.`], () => { loadMatrixRound(); });
+                } else {
+                    queueDialogue([`Narrator: Warning! CPU deployed a TAKE_SYSTEM worm and stole your ${stolenItem.name} out of Drive Bay ${stolenIdx+1}!`], () => { loadMatrixRound(); });
+                }
+            } else {
+                queueDialogue([`Narrator: TAKE_SYSTEM script failed. Target inventory directories are empty.`], () => { loadMatrixRound(); });
+            }
+        }
+        else if (id === 'regen') {
+            if (owner === 'player') {
+                playerRegenActive = true;
+                queueDialogue(["Narrator: REGEN_SHIELD matrix buffered. Repair loops will run right after the opponent finishes their upcoming sequence."], () => { loadMatrixRound(); });
+            } else {
+                cpuRegenActive = true;
+                queueDialogue(["Narrator: CPU initialized a REGEN_SHIELD cluster layer."], () => { loadMatrixRound(); });
+            }
+        }
+        else if (id === 'addturn') {
+            if (owner === 'player') {
+                playerAddTurnCount += 1;
+                nextTurnForcedOverrideOwner = 'player';
+                queueDialogue([`Narrator: TIME_WARP_LOOP routine engaged successfully (Loop sequence: ${playerAddTurnCount}/2). You retain choice execution authority after this sequence.`], () => { loadMatrixRound(); });
+            } else {
+                cpuAddTurnCount += 1;
+                nextTurnForcedOverrideOwner = 'cpu';
+                queueDialogue([`Narrator: CPU framework registered a TIME_WARP_LOOP command thread. (Loop sequence: ${cpuAddTurnCount}/2).`], () => { loadMatrixRound(); });
+            }
+        }
+        else if (id === 'reverse') {
+            if (owner === 'player') {
+                playerReverseActive = true;
+                playerReverseSpentThisCycle = true;
+                queueDialogue(["Narrator: MIRROR_SHIELD confirmed active for 1 turn. Any feedback core damage or opponent memory hits will swap targets entirely."], () => { loadMatrixRound(); });
+            } else {
+                cpuReverseActive = true;
+                cpuReverseSpentThisCycle = true;
+                queueDialogue(["Narrator: CPU initiated MIRROR_SHIELD algorithm. Terminal feedback streams are mirrored for this frame."], () => { loadMatrixRound(); });
+            }
+        }
+    }
+ 
     function selectMatrixCell(idx) {
-        if (isUiLocked || !isPlayerTurn) return;
+        if (isUiLocked) return;
         isUiLocked = true; 
         stopProjectorAnimation();
+        stopTurnTimer();
+        
+        // Emit cell selection to opponent if in multiplayer
+        if (isMultiplayer && socket) {
+            socket.emit('player_action', { type: 'select_cell', index: idx });
+        }
  
-        // Emit selected network parameters straight to backend central supervisor
-        socket.emit('select-node', { roomId: activeMatchRoomId, nodeIndex: idx });
+        const selection = currentMatrixOptions[idx];
+        selection.cleared = true;
+ 
+        let basicDamageOutput = 1 + activeDamageBonus;
+        activeDamageBonus = 0; 
+ 
+        let whoShouldNormallyTakeDamage = '';
+        let isHitATrap = false;
+
+        if (selection.trap) {
+            whoShouldNormallyTakeDamage = 'player';
+            isHitATrap = true;
+            playerRegenActive = false;
+        } else {
+            whoShouldNormallyTakeDamage = 'cpu';
+            cpuRegenActive = false;
+        }
+
+        let actualDamageTarget = whoShouldNormallyTakeDamage;
+        if (playerReverseActive) {
+            actualDamageTarget = (whoShouldNormallyTakeDamage === 'player') ? 'cpu' : 'player';
+            playerReverseActive = false; 
+        }
+
+        if (isHitATrap && actualDamageTarget === 'player' && activeRiskFreeShield) {
+            activeRiskFreeShield = false;
+            queueDialogue([
+                "Narrator: Target node containment corrupted! TRAP DETONATED.",
+                "Narrator: SANDBOX_PROXY interface fully insulated system cells. Damage averted."
+            ], () => { processPostTurnRegeneration('player'); });
+            return;
+        }
+
+        if (actualDamageTarget === 'player') {
+            playerHP -= basicDamageOutput;
+            updateHPDisplay();
+            playPlayerDamageSound();
+            queueDialogue([
+                isHitATrap ? "Narrator: ERROR! Matrix loop trap breached." : "Narrator: MIRROR SYSTEM DETECTED! Outgoing payload mirrored back.",
+                `Narrator: Structural integrity decreased by ${basicDamageOutput} memory units.`
+            ], () => { processPostTurnRegeneration('player'); });
+        } else {
+            cpuHP -= basicDamageOutput;
+            updateHPDisplay();
+            playCpuDamageSound();
+            queueDialogue([
+                isHitATrap ? "Narrator: TRAP MOVED VIA MIRRORING! Structural feedback redirected to opponent." : "Narrator: DIRECT HIT! Firewall data link path resolved.",
+                `Narrator: Erased ${basicDamageOutput} sectors from CPU framework.`
+            ], () => { processPostTurnRegeneration('player'); });
+        }
+    }
+ 
+    function processPostTurnRegeneration(justEndedOwner) {
+        if (justEndedOwner === 'player' && cpuRegenActive) {
+            cpuRegenActive = false;
+            cpuHP = Math.min(10, cpuHP + 2);
+            updateHPDisplay();
+            playUtilitySound();
+            queueDialogue(["Narrator: REGEN_SHIELD check passed. CPU successfully restored +2 HP cells."], () => { checkAndProceedNextTurn(); });
+        } 
+        else if (justEndedOwner === 'cpu' && playerRegenActive) {
+            playerRegenActive = false;
+            playerHP = Math.min(10, playerHP + 2);
+            updateHPDisplay();
+            playUtilitySound();
+            queueDialogue(["Narrator: REGEN_SHIELD check passed. Your recovery subroutines recovered +2 HP cells."], () => { checkAndProceedNextTurn(); });
+        } 
+        else {
+            checkAndProceedNextTurn();
+        }
+    }
+
+    function checkAndProceedNextTurn() {
+        if (nextTurnForcedOverrideOwner !== null) {
+            isPlayerTurn = (nextTurnForcedOverrideOwner === 'player');
+            nextTurnForcedOverrideOwner = null; 
+        } else {
+            isPlayerTurn = !isPlayerTurn;
+            playerAddTurnCount = 0; 
+            cpuAddTurnCount = 0;
+        }
+        loadMatrixRound();
+    }
+
+    function executeCpuAutomationTurn() {
+        let filledCpuSlots = [];
+        cpuInventory.forEach((item, index) => { if(item !== null) filledCpuSlots.push(index); });
+ 
+        let deployedUsb = false;
+ 
+        if (filledCpuSlots.length > 0) {
+            for (let idx of filledCpuSlots) {
+                let currentItem = cpuInventory[idx];
+                
+                if (currentItem.id === 'addturn' && cpuAddTurnCount >= 2) continue;
+                if (currentItem.id === 'reverse' && (cpuReverseActive || cpuReverseSpentThisCycle)) continue;
+
+                let triggersDeployment = false;
+                if (gameDifficulty === 'easy' && Math.random() > 0.7) triggersDeployment = true;
+                if (gameDifficulty === 'normal' && Math.random() > 0.5) triggersDeployment = true;
+                if (gameDifficulty === 'hard') {
+                    if (currentItem.id === 'reverse' && cpuHP <= 4) triggersDeployment = true;
+                    if (currentItem.id === 'virus' && activeDamageBonus === 0) triggersDeployment = true;
+                    if (currentItem.id === 'addturn' && cpuAddTurnCount < 1) triggersDeployment = true;
+                    if (currentItem.id === 'time' || currentItem.id === 'risk' || currentItem.id === 'hp') triggersDeployment = true;
+                }
+
+                if (triggersDeployment) {
+                    deployedUsb = true;
+                    triggerCpuHardwareInjection(idx);
+                    break;
+                }
+            }
+        }
+ 
+        if (deployedUsb) return;
+ 
+        let finalThinkingMs = 1500;
+        if (gameDifficulty === 'easy') finalThinkingMs = 2000 + Math.random() * 1000;
+        if (gameDifficulty === 'hard') finalThinkingMs = 600 + Math.random() * 600;
+ 
+        setTimeout(() => {
+            stopTurnTimer();
+ 
+            const activeIndices = [];
+            currentMatrixOptions.forEach((o, i) => { if (!o.cleared) activeIndices.push(i); });
+ 
+            let isTargetingTrap = false;
+            let trapIndices = activeIndices.filter(i => currentMatrixOptions[i].trap);
+            let clearIndices = activeIndices.filter(i => !currentMatrixOptions[i].trap);
+ 
+            let roll = Math.random();
+            if (gameDifficulty === 'easy') {
+                if (roll < 0.60 && trapIndices.length > 0) isTargetingTrap = true;
+            } else if (gameDifficulty === 'normal') {
+                if (roll < 0.35 && trapIndices.length > 0) isTargetingTrap = true;
+            } else if (gameDifficulty === 'hard') {
+                if (roll < 0.10 && trapIndices.length > 0) isTargetingTrap = true;
+            }
+ 
+            let absoluteChoiceIndex = activeIndices[Math.floor(Math.random() * activeIndices.length)];
+            if (isTargetingTrap && trapIndices.length > 0) {
+                absoluteChoiceIndex = trapIndices[Math.floor(Math.random() * trapIndices.length)];
+            } else if (!isTargetingTrap && clearIndices.length > 0) {
+                absoluteChoiceIndex = clearIndices[Math.floor(Math.random() * clearIndices.length)];
+            }
+ 
+            const selection = currentMatrixOptions[absoluteChoiceIndex];
+            selection.cleared = true;
+ 
+            let basicDamageOutput = 1 + activeDamageBonus;
+            activeDamageBonus = 0;
+ 
+            let whoShouldNormallyTakeDamage = selection.trap ? 'cpu' : 'player';
+            let actualDamageTarget = whoShouldNormallyTakeDamage;
+
+            if (cpuReverseActive) {
+                actualDamageTarget = (whoShouldNormallyTakeDamage === 'player') ? 'cpu' : 'player';
+                cpuReverseActive = false;
+            }
+
+            if (actualDamageTarget === 'player') {
+                if (activeRiskFreeShield && selection.trap) {
+                    activeRiskFreeShield = false;
+                    queueDialogue([
+                        "Narrator: CPU processed an execution link anomaly.",
+                        "Narrator: SANDBOX_PROXY partition containerized damage profiles."
+                    ], () => { processPostTurnRegeneration('cpu'); });
+                } else {
+                    playerHP -= basicDamageOutput;
+                    updateHPDisplay();
+                    playPlayerDamageSound();
+                    queueDialogue([
+                        selection.trap ? "Narrator: CPU mapping crossed defensive arrays." : "Narrator: CPU executed straight structural link.",
+                        `Narrator: Player framework sustained ${basicDamageOutput} data loss cells.`
+                    ], () => { processPostTurnRegeneration('cpu'); });
+                }
+            } else {
+                cpuHP -= basicDamageOutput;
+                updateHPDisplay();
+                playCpuDamageSound();
+                queueDialogue([
+                    selection.trap ? "Narrator: CPU calculation error tripped local traps." : "Narrator: MIRROR TRANSACTION! Logic inverted onto enemy terminal stack.",
+                    `Narrator: CPU health lowered by ${basicDamageOutput} units.`
+                ], () => { processPostTurnRegeneration('cpu'); });
+            }
+        }, finalThinkingMs);
+    }
+ 
+    function triggerCpuHardwareInjection(slotIndex) {
+        const rowEl = document.getElementById(`c-slot-row-${slotIndex}`).querySelector('.pixel-hardware-container');
+        if (rowEl) rowEl.classList.add('injecting-hardware');
+ 
+        setTimeout(() => {
+            let activeItem = cpuInventory[slotIndex];
+            cpuInventory[slotIndex] = null;
+            renderHardwareBays();
+            applyUsbExecutionPayload(activeItem.id, 'cpu');
+        }, 600);
     }
  
     function processEndgameLoop() {
+        isUiLocked = true;
         stopProjectorAnimation();
+        stopTurnTimer();
         playExplosionSound();
  
         if (playerHP <= 0) {
-            document.getElementById('projector').innerText = "FATAL_CRASH\n[CONNECTION LOST]";
+            cpuWinPoints += 1;
+            document.getElementById('projector').innerText = "FATAL_CRASH\n[YOU ARE ELIMINATED]";
+            queueDialogue([
+                "Narrator: CRITICAL STRUCTURAL ERASURE. Link terminal disabled.",
+                isMultiplayer ? "Narrator: Opponent collects the victory index token." : "Narrator: CPU collects the victory index token."
+            ], () => { showResetScreenLink(); });
         } else {
-            document.getElementById('projector').innerText = "CLEARED\n[YOU WON LINK MATCH]";
+            playerWinPoints += 1;
+            document.getElementById('projector').innerText = "CLEARED\n[YOU WON]";
+            queueDialogue([
+                "Narrator: CEASEFIRE. System security target verified.",
+                "Narrator: Player wins execution matrix."
+            ], () => { showResetScreenLink(); });
         }
+    }
+ 
+    function showResetScreenLink() {
+        updateHPDisplay();
         document.getElementById('start-screen').style.display = 'flex';
         document.getElementById('start-button').style.display = 'none';
+        document.getElementById('global-match-btn').style.display = 'none'; 
         document.getElementById('restart-button').style.display = 'inline-block';
     }
  
-    function triggerPageRefresh() { window.location.reload(); }
+    function triggerPageRefresh() {
+        window.location.reload();
+    }
 </script>
+ 
+</body>
+</html>
 </body>
 </html>
